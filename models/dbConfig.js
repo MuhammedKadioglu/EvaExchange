@@ -23,6 +23,9 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-db.Department = require("./Department.model.js")(sequelize, Sequelize);
+db.Share = require("./share.model.js")(sequelize, Sequelize);
+db.Clients = require("./clients.model.js")(sequelize, Sequelize);
+db.Portfolio = require("./portfolio.model.js")(sequelize, Sequelize);
+db.Transaction = require("./transaction.model.js")(sequelize, Sequelize);
 
 module.exports = db;
