@@ -1,9 +1,9 @@
 module.exports = {
-    HOST: "CMSPORTALPROD02",
-    USER: "cms",
-    PASSWORD: "cms123",
-    DB: "CoreTemplate",
-    dialect: "mssql",
+    HOST: "serverName",
+    USER: "userName",
+    PASSWORD: "password",
+    DB: "DbName",
+    dialect: "mssql",/* one of 'mysql' | 'postgres' | 'sqlite' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle' */
     pool: {
       max: 5,
       min: 0,
