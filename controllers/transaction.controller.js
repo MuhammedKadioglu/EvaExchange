@@ -5,77 +5,91 @@ const Share = db.Share;
 const Portfolio = db.Portfolio;
 
 shareOperation = async (newTransaction) => {
-  return new Promise(resolve =>{
-     Transaction.create(newTransaction)
-    .then(async (data) => {
-      if (newTransaction.Operation == "BUY") {
-        var TotalPriceWallet = -newTransaction.TotalPrice;
-        var TotalPrice = newTransaction.TotalPrice;
-        var ShareSize = newTransaction.ShareSize;
-      } else {
-        var TotalPriceWallet = -newTransaction.TotalPrice;
-        var TotalPrice = newTransaction.TotalPrice;
-        var ShareSize = -newTransaction.ShareSize;
-      }
-      Clients.increment(
-        {
-          WalletBalance: TotalPriceWallet,
-        },
-        {
-          where: { Id: newTransaction.ClientId },
+  return new Promise((resolve) => {
+    Transaction.create(newTransaction)
+      .then(async (data) => {
+        if (newTransaction.Operation == "BUY") {
+          var TotalPriceWallet = -newTransaction.TotalPrice;
+          var TotalPrice = newTransaction.TotalPrice;
+          var ShareSizeShareTable = -newTransaction.ShareSize;
+          var ShareSize = newTransaction.ShareSize;
+        } else {
+          var TotalPriceWallet = -newTransaction.TotalPrice;
+          var TotalPrice = newTransaction.TotalPrice;
+          var ShareSize = -newTransaction.ShareSize;
+          var ShareSizeShareTable = newTransaction.ShareSize;
         }
-      )
-        .then(async (data) => {
-          const ClientPortfolio = await Portfolio.findOne({
-            where: {
-              ClientId: newTransaction.ClientId,
-              ShareId: newTransaction.ShareId,
-            },
-          });
-          if (ClientPortfolio == null) {
-            const newPortfolio = {
-              ClientId: newTransaction.ClientId,
-              ShareId: newTransaction.ShareId,
-              ShareSize: newTransaction.ShareSize,
-              TotalPrice: TotalPrice,
-            };
-            Portfolio.create(newPortfolio)
-              .then((data) => {
-                resolve("Success");
-              })
-              .catch((error) => {
-                resolve(error);
-              });
-          } else {
-            Portfolio.increment(
-              {
-                ShareSize: ShareSize,
-                TotalPrice: TotalPrice,
-              },
-              {
-                where: {
-                  Id: ClientPortfolio.Id,
-                },
-              }
-            )
-              .then((data) => {
-                resolve("Success");
-              })
-              .catch((error) => {
-                resolve(error);
-              });
+        Clients.increment(
+          {
+            WalletBalance: TotalPriceWallet,
+          },
+          {
+            where: { Id: newTransaction.ClientId },
           }
-        })
-        .catch((error) => {
+        ).then(async (data) => {
+          Share.increment(
+            {
+              ShareCount: ShareSizeShareTable,
+            },
+            {
+              where: {
+                Id: newTransaction.ShareId,
+              },
+            }
+          )
+            .then(async (data) => {
+              const ClientPortfolio = await Portfolio.findOne({
+                where: {
+                  ClientId: newTransaction.ClientId,
+                  ShareId: newTransaction.ShareId,
+                },
+              });
+              if (ClientPortfolio == null) {
+                const newPortfolio = {
+                  ClientId: newTransaction.ClientId,
+                  ShareId: newTransaction.ShareId,
+                  ShareSize: newTransaction.ShareSize,
+                  TotalPrice: TotalPrice,
+                };
+                Portfolio.create(newPortfolio)
+                  .then((data) => {
+                    resolve("Success");
+                  })
+                  .catch((error) => {
+                    resolve(error);
+                  });
+              } else {
+                Portfolio.increment(
+                  {
+                    ShareSize: ShareSize,
+                    TotalPrice: TotalPrice,
+                  },
+                  {
+                    where: {
+                      Id: ClientPortfolio.Id,
+                    },
+                  }
+                )
+                  .then((data) => {
+                    resolve("Success");
+                  })
+                  .catch((error) => {
+                    resolve(error);
+                  });
+              }
+            })
+            .catch((error) => {
+              resolve(error);
+            });
+        }).catch((error) => {
           resolve(error);
         });
-    })
-    .catch((error) => {
-      resolve(error);
-      console.error("Failed to create a new record : ", error);
-    });
-  })
-  
+      })
+      .catch((error) => {
+        resolve(error);
+        console.error("Failed to create a new record : ", error);
+      });
+  });
 };
 
 exports.BulkInsert = async (ClientId, ShareId, ShareSize, Operation) => {
@@ -151,9 +165,9 @@ exports.create = async (req, res) => {
           Operation: req.body.Operation,
         };
         var result = await shareOperation(newTransaction);
-        console.log("result",result);
+        console.log("result", result);
         res.send({
-          message: result
+          message: result,
         });
       } else {
         res.send({
@@ -180,7 +194,7 @@ exports.create = async (req, res) => {
           };
           var result = await shareOperation(newTransaction);
           res.send({
-            message: result
+            message: result,
           });
         } else {
           res.send({
