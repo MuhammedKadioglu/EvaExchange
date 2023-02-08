@@ -4,6 +4,8 @@ const Clients = db.Clients;
 const Share = db.Share;
 const Portfolio = db.Portfolio;
 
+
+// BUY SELL Operation
 shareOperation = async (newTransaction) => {
   return new Promise((resolve) => {
     Transaction.create(newTransaction)

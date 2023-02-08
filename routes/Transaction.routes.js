@@ -4,13 +4,13 @@ module.exports = app => {
     var router = require("express").Router();
 
 
-    // Create a new Portfolio Data
+    // Create a new Transaction BUY SELL Operation Data
     router.post("/", transactionController.create);
   
-    // Retrieve all Clients Portfolio
+    // Retrieve all Transaction LOG
     router.get("/", transactionController.findAll);
   
-    // Retrieve a single Client Portfolio with Id
+    // Retrieve a single Client Transaction LOG with Id
     router.get("/:ClientId", transactionController.get);
   
   
