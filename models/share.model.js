@@ -11,6 +11,13 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             unique: true
         },
+        ShareCount: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            validate:{
+                min: 0
+            }
+        },
         Price: {
             type: DataTypes.DECIMAL(10,2),
             allowNull: false,

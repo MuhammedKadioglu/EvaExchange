@@ -2,70 +2,198 @@ const db = require("../models/dbConfig");
 const Transaction = db.Transaction;
 const Clients = db.Clients;
 const Share = db.Share;
+const Portfolio = db.Portfolio;
 
-exports.BulkInsert = async (ClientId, ShareId, ShareSize, Operation) => {
-    var ShareData = await Share.findByPk(ShareId);
-    if(Operation == "BUY"){
-        var TotalPrice = ShareData.Price * ShareSize;
-    }
-    else{
-        var TotalPrice = -ShareData.Price * ShareSize;
-    }
-    
-  const newTransaction = {
-    ClientId: ClientId,
-    ShareId: ShareId,
-    ShareSize: ShareSize,
-    TotalPrice: TotalPrice,
-    Operation: Operation,
-  };
-  Transaction.create(newTransaction)
-    .then((data) => {
-        Clients.increment({
-            WalletBalance:  TotalPrice
-        }, {
-            where: { Id: ClientId },
-          })
-      console.log(res);
+shareOperation = async (newTransaction) => {
+  return new Promise(resolve =>{
+     Transaction.create(newTransaction)
+    .then(async (data) => {
+      if (newTransaction.Operation == "BUY") {
+        var TotalPriceWallet = -newTransaction.TotalPrice;
+        var TotalPrice = newTransaction.TotalPrice;
+        var ShareSize = newTransaction.ShareSize;
+      } else {
+        var TotalPriceWallet = -newTransaction.TotalPrice;
+        var TotalPrice = newTransaction.TotalPrice;
+        var ShareSize = -newTransaction.ShareSize;
+      }
+      Clients.increment(
+        {
+          WalletBalance: TotalPriceWallet,
+        },
+        {
+          where: { Id: newTransaction.ClientId },
+        }
+      )
+        .then(async (data) => {
+          const ClientPortfolio = await Portfolio.findOne({
+            where: {
+              ClientId: newTransaction.ClientId,
+              ShareId: newTransaction.ShareId,
+            },
+          });
+          if (ClientPortfolio == null) {
+            const newPortfolio = {
+              ClientId: newTransaction.ClientId,
+              ShareId: newTransaction.ShareId,
+              ShareSize: newTransaction.ShareSize,
+              TotalPrice: TotalPrice,
+            };
+            Portfolio.create(newPortfolio)
+              .then((data) => {
+                resolve("Success");
+              })
+              .catch((error) => {
+                resolve(error);
+              });
+          } else {
+            Portfolio.increment(
+              {
+                ShareSize: ShareSize,
+                TotalPrice: TotalPrice,
+              },
+              {
+                where: {
+                  Id: ClientPortfolio.Id,
+                },
+              }
+            )
+              .then((data) => {
+                resolve("Success");
+              })
+              .catch((error) => {
+                resolve(error);
+              });
+          }
+        })
+        .catch((error) => {
+          resolve(error);
+        });
     })
     .catch((error) => {
+      resolve(error);
       console.error("Failed to create a new record : ", error);
     });
-    
+  })
+  
+};
+
+exports.BulkInsert = async (ClientId, ShareId, ShareSize, Operation) => {
+  var ShareData = await Share.findByPk(ShareId);
+  var ClientData = await Clients.findByPk(ClientId);
+  if (ShareData == null || ClientData == null) {
+    console.log("client or share not defined");
+  } else {
+    if (Operation == "BUY") {
+      var TotalPrice = ShareData.Price * ShareSize;
+      if (
+        ShareData.ShareCount >= ShareSize &&
+        ClientData.WalletBalance >= TotalPrice
+      ) {
+        const newTransaction = {
+          ClientId: ClientId,
+          ShareId: ShareId,
+          ShareSize: ShareSize,
+          TotalPrice: TotalPrice,
+          Operation: Operation,
+        };
+        await shareOperation(newTransaction);
+      } else {
+        console.log(
+          "Share size have not bigger than Share Count or Client wallet balance lower than TotalPrice"
+        );
+      }
+    } else {
+      const ClientShare = await Portfolio.findOne({
+        where: {
+          ClientId: ClientId,
+          ShareId: ShareId,
+        },
+      });
+      if (ClientShare !== null) {
+        var TotalPrice = -ShareData.Price * ShareSize;
+        if (ClientShare.ShareSize >= ShareSize) {
+          const newTransaction = {
+            ClientId: ClientId,
+            ShareId: ShareId,
+            ShareSize: ShareSize,
+            TotalPrice: TotalPrice,
+            Operation: Operation,
+          };
+          await shareOperation(newTransaction);
+        } else {
+          console.log("Share size have not bigger than Share Count");
+        }
+      } else {
+        console.log("Client Dont have this share");
+      }
+    }
+  }
 };
 // Create and Save a new Transaction Data
 exports.create = async (req, res) => {
-    var ShareData = await Share.findByPk(req.body.ShareId);
-    if(req.body.Operation == "BUY"){
-        var TotalPrice = ShareData.Price * req.body.ShareSize;
-    }
-    else{
-        var TotalPrice = -ShareData.Price * req.body.ShareSize;
-    }
-  const newTransaction = {
-    ClientId: req.body.ClientId,
-    ShareId: req.body.ShareId,
-    ShareSize: req.body.ShareSize,
-    TotalPrice: TotalPrice,
-    Operation: req.body.Operation,
-  };
-  Transaction.create(newTransaction)
-    .then((data) => {
-        Clients.increment({
-            WalletBalance:  TotalPrice
-        }, {
-            where: { Id: ClientId },
-          })
-      res.send({
-        message: "User Created Succesfully",
+  var ShareData = await Share.findByPk(req.body.ShareId);
+  var ClientData = await Clients.findByPk(req.body.ClientId);
+  if (ShareData == null || ClientData == null) {
+    console.log("client or share not defined");
+  } else {
+    if (req.body.Operation == "BUY") {
+      var TotalPrice = ShareData.Price * req.body.ShareSize;
+      if (
+        ShareData.ShareCount >= req.body.ShareSize &&
+        ClientData.WalletBalance >= TotalPrice
+      ) {
+        const newTransaction = {
+          ClientId: req.body.ClientId,
+          ShareId: req.body.ShareId,
+          ShareSize: req.body.ShareSize,
+          TotalPrice: TotalPrice,
+          Operation: req.body.Operation,
+        };
+        var result = await shareOperation(newTransaction);
+        console.log("result",result);
+        res.send({
+          message: result
+        });
+      } else {
+        res.send({
+          message:
+            "Share size have not bigger than Share Count or Client wallet balance lower than TotalPrice",
+        });
+      }
+    } else {
+      const ClientShare = await Portfolio.findOne({
+        where: {
+          ClientId: req.body.ClientId,
+          ShareId: req.body.ShareId,
+        },
       });
-      console.log(res);
-    })
-    .catch((error) => {
-      res.send(error);
-      console.error("Failed to create a new record : ", error);
-    });
-    
+      if (ClientShare !== null) {
+        var TotalPrice = -ShareData.Price * req.body.ShareSize;
+        if (ClientShare.ShareSize >= req.body.ShareSize) {
+          const newTransaction = {
+            ClientId: req.body.ClientId,
+            ShareId: req.body.ShareId,
+            ShareSize: req.body.ShareSize,
+            TotalPrice: TotalPrice,
+            Operation: req.body.Operation,
+          };
+          var result = await shareOperation(newTransaction);
+          res.send({
+            message: result
+          });
+        } else {
+          res.send({
+            message: "Share size have not bigger than Share Count",
+          });
+        }
+      } else {
+        res.send({
+          message: "Client dont have this share",
+        });
+      }
+    }
+  }
 };
 
 // Retrieve all Transaction from the database.

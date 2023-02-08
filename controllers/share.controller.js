@@ -6,6 +6,7 @@ const Share = db.Share;
 exports.create = (req, res) => {
   const newShare = {
     ShareCode: req.body.ShareCode,
+    ShareCount: req.body.ShareCount,
     Price: req.body.Price,
   };
   Share.create(newShare)
@@ -49,14 +50,34 @@ exports.get = (req, res) => {
 // Update a Share by the id in the request
 exports.update = async (req, res) => {
   const Id = req.params.Id;
-  console.log(req.body);
-  var ShareData = await Share.findByPk(Id);
-  console.log(ShareData);
-  console.log(ShareData.LastUpdateDate);
-  console.log(moment(ShareData.LastUpdateDate).add(moment.duration(1, 'hours')) );
-  console.log(moment());
-if(moment(ShareData.LastUpdateDate).add(moment.duration(1, 'hours')) < moment()){
     Share.update(req.body, {
+        where: { Id: Id },
+      })
+        .then((result) => {
+          if (result == 1) {
+            res.send({
+              message: "Share was updated successfully.",
+            });
+          } else {
+            res.send({
+              message: "Cannot update Share ",
+            });
+          }
+        })
+        .catch((err) => {
+          res.status(500).send({
+            message: "Error updating Share with Id=" + Id,
+          });
+        });
+};
+
+exports.updatePrice = async (req, res) => {
+  const Id = req.params.Id;
+  var ShareData = await Share.findByPk(Id);
+if(moment(ShareData.LastUpdateDate).add(moment.duration(1, 'hours')) < moment()){
+    Share.update({
+      Price : req.body.Price
+    }, {
         where: { Id: Id },
       })
         .then((result) => {
