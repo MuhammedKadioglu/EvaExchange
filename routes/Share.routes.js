@@ -15,6 +15,9 @@ module.exports = app => {
   
     // Update a Share with id
     router.put("/:Id", shareController.update);
+
+    // Update Share Price
+    router.put("/UpdatePrice/:Id", shareController.update);
   
     // Delete a Share with id
     router.delete("/:Id", shareController.delete);
